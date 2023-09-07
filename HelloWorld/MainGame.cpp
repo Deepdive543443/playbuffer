@@ -27,6 +27,10 @@ bool MainGameUpdate( float elapsedTime )
 {
 	Play::ClearDrawingBuffer( Play::cOrange );
 
+	// Update timer
+	game_state.timer += elapsedTime;
+	
+	
 	// Obtain information from struct
 	Play::DrawDebugText(
 		{ DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 }, 
@@ -44,6 +48,7 @@ bool MainGameUpdate( float elapsedTime )
 	}
 
 
+	// Quit application
 	Play::PresentDrawingBuffer();
 	return Play::KeyDown( VK_ESCAPE );
 }
