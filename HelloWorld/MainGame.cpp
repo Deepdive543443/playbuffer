@@ -16,7 +16,7 @@ void MainGameEntry( PLAY_IGNORE_COMMAND_LINE )
 bool MainGameUpdate( float elapsedTime )
 {
 	Play::ClearDrawingBuffer( Play::cOrange );
-	Play::DrawDebugText( { DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 }, "Hello World!" );
+	Play::DrawDebugText( { DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 }, "Good looking font style!" );
 	Play::PresentDrawingBuffer();
 	return Play::KeyDown( VK_ESCAPE );
 }
