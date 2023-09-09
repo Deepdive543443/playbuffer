@@ -2,18 +2,25 @@
 #define PLAY_USING_GAMEOBJECT_MANAGER
 #include "Play.h"
 
-int DISPLAY_WIDTH = 640;
-int DISPLAY_HEIGHT = 360;
+int DISPLAY_WIDTH = 1280;
+int DISPLAY_HEIGHT = 720;
 int DISPLAY_SCALE = 2;
 
 
 struct GameState
 {
-	float timer = 0.0f;
-	int spriteID = 0;
+	int score = 0;
 };
 
 GameState game_state;
+
+enum GameObjectType
+{
+	TYPE_NULL = -1,
+	TYPE_AGENT8,
+};
+
+void HandlePlayercontrols();
 
 
 // The entry point for a PlayBuffer program
@@ -21,33 +28,16 @@ void MainGameEntry( PLAY_IGNORE_COMMAND_LINE )
 {
 	Play::CreateManager( DISPLAY_WIDTH, DISPLAY_HEIGHT, DISPLAY_SCALE );
 	Play::CentreAllSpriteOrigins();
+	Play::LoadBackground("Data\\Backgrounds\\background.png");
+	Play::StartAudioLoop("music");
+	Play::CreateGameObject(TYPE_AGENT8, {115, 0}, 50, "agent8");
 }
 
 // Called by PlayBuffer every frame (60 times a second!)
 bool MainGameUpdate( float elapsedTime )
 {
-	Play::ClearDrawingBuffer( Play::cOrange );
-
-	// Update timer
-	game_state.timer += elapsedTime;
-	
-	
-	// Obtain information from struct
-	Play::DrawDebugText(
-		{ DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 }, 
-		Play::GetSpriteName(game_state.spriteID), 
-		Play::cWhite
-	);
-	
-	// Get mouse position
-	Play::DrawSprite(game_state.spriteID, Play::GetMousePos(), game_state.timer);
-
-	// Add one to Id when pressing space
-	if ( Play::KeyPressed(VK_SPACE) )
-	{
-		game_state.spriteID++;
-	}
-
+	Play::DrawBackground();
+	HandlePlayercontrols();
 
 	// Quit application
 	Play::PresentDrawingBuffer();
@@ -61,3 +51,31 @@ int MainGameExit( void )
 	return PLAY_OK;
 }
 
+void HandlePlayercontrols()
+{
+	GameObject& obj_agent8 = Play::GetGameObjectByType(TYPE_AGENT8);
+	if (Play::KeyDown(VK_UP))
+	{
+		obj_agent8.velocity = { 0, -4 };
+		Play::SetSprite(obj_agent8, "agent8_climb", 0.25f);
+	}
+	else if (Play::KeyDown(VK_DOWN))
+	{
+		obj_agent8.acceleration = { 0, 1 };
+		Play::SetSprite(obj_agent8, "agent8_fall", 0);
+	}
+	else 
+	{
+		Play::SetSprite(obj_agent8, "agent8_hang", 0.02f);
+		obj_agent8.velocity *= 0.5f;
+		obj_agent8.acceleration = { 0, 0 };
+	}
+
+	// code above obtain the address of object agent 8. 
+	// Then updating Game object's parameters by players input
+	Play::UpdateGameObject(obj_agent8);
+
+	if (Play::IsLeavingDisplayArea(obj_agent8)) obj_agent8.pos = obj_agent8.oldPos;
+	Play::DrawLine({obj_agent8.pos.x, 0}, obj_agent8.pos, Play::cWhite);
+	Play::DrawObjectRotated(obj_agent8);
+}
