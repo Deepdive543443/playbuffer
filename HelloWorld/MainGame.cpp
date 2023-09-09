@@ -20,6 +20,7 @@ GameState game_state;
 void MainGameEntry( PLAY_IGNORE_COMMAND_LINE )
 {
 	Play::CreateManager( DISPLAY_WIDTH, DISPLAY_HEIGHT, DISPLAY_SCALE );
+	Play::CentreAllSpriteOrigins();
 }
 
 // Called by PlayBuffer every frame (60 times a second!)
