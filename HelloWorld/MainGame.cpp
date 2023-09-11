@@ -46,6 +46,13 @@ void HandlePlayercontrols()
 		obj_agent8.acceleration = { 0, 0 };
 	}
 
+	if (Play::KeyDown(VK_SPACE))
+	{
+		Vector2D firePos = obj_agent8.pos + Vector2D(155, -75);
+		int id = Play::CreateGameObject(TYPE_LASER, firePos, 30, "laser");
+		Play::GetGameObject(id).velocity = {32, 0};
+		Play::PlayAudio("shoot");
+	}
 	// code above obtain the address of object agent 8. 
 	// Then updating Game object's parameters by players input
 	Play::UpdateGameObject(obj_agent8);
@@ -162,6 +169,61 @@ void UpdateCoinsAndStars()
 
 	}
 };
+void UpdateLaser()
+{
+	std::vector<int> vLasers = Play::CollectGameObjectIDsByType(TYPE_LASER);
+	std::vector<int> vTools = Play::CollectGameObjectIDsByType(TYPE_TOOL);
+	std::vector<int> vCoins = Play::CollectGameObjectIDsByType(TYPE_COIN);
+
+	for(int id_laser: vLasers)
+	{
+		GameObject& obj_laser = Play::GetGameObject(id_laser);
+		bool hasCollided = false;
+		for (int id_tool : vTools)
+		{
+			GameObject& obj_tool = Play::GetGameObject(id_tool);
+			if (Play::IsColliding(obj_laser, obj_tool))
+			{
+				hasCollided = true;
+				obj_tool.type = TYPE_DESTROYED;
+				game_state.score += 100;
+			}
+		}
+
+		for (int id_coin : vCoins)
+		{
+			GameObject& obj_coin = Play::GetGameObject(id_coin);
+			if (Play::IsColliding(obj_laser, obj_coin))
+			{
+				hasCollided = true;
+				obj_coin.type = TYPE_DESTROYED;
+				Play::PlayAudio("error");
+				game_state.score -= 300;
+			}
+		}
+		if (game_state.score < 0) game_state.score = 0;
+		
+		Play::UpdateGameObject(obj_laser);
+		Play::DrawObject(obj_laser);
+		
+		if (!Play::IsVisible(obj_laser) || hasCollided) Play::DestroyGameObject(id_laser);
+	}
+};
+void UpdateDestroyed()
+{
+	std::vector<int> vDead = Play::CollectGameObjectIDsByType(TYPE_DESTROYED);
+
+	for (int id_dead : vDead)
+	{
+		GameObject& obj_dead = Play::GetGameObject(id_dead);
+		obj_dead.animSpeed = 0.2f;
+		Play::UpdateGameObject(obj_dead);
+
+		if (obj_dead.frame % 2) Play::DrawObjectRotated(obj_dead, (10 - obj_dead.frame) / 10.0f);
+		if (!Play::IsVisible(obj_dead) || obj_dead.frame >= 10) Play::DestroyGameObject(id_dead);
+	}
+};
+
 
 
 // This looks like unity, I like it
@@ -186,6 +248,8 @@ bool MainGameUpdate( float elapsedTime )
 	UpdateFan();
 	UpdateTools();
 	UpdateCoinsAndStars();
+	UpdateLaser();
+	UpdateDestroyed();
 	// Quit application
 	Play::PresentDrawingBuffer();
 	return Play::KeyDown( VK_ESCAPE );
