@@ -6,10 +6,18 @@ int DISPLAY_WIDTH = 1280;
 int DISPLAY_HEIGHT = 720;
 int DISPLAY_SCALE = 1;
 
+enum Agent8State
+{
+	STATE_APPEAR = 0,
+	STATE_HALT,
+	STATE_PLAY,
+	STATE_DEAD,
+};
 
 struct GameState
 {
 	int score = 0;
+	Agent8State agentState = STATE_APPEAR;
 };
 
 GameState game_state;
@@ -41,9 +49,18 @@ void HandlePlayercontrols()
 	}
 	else
 	{
-		Play::SetSprite(obj_agent8, "agent8_hang", 0.02f);
-		obj_agent8.velocity *= 0.5f;
-		obj_agent8.acceleration = { 0, 0 };
+		if (obj_agent8.velocity.y > 5)
+		{
+			game_state.agentState = STATE_HALT;
+			Play::SetSprite(obj_agent8, "agent8_halt", 0.333f);
+			obj_agent8.acceleration = { 0, 0 };
+		}
+		else
+		{
+			Play::SetSprite(obj_agent8, "agent8_hang", 0.02f);
+			obj_agent8.velocity *= 0.5f;
+			obj_agent8.acceleration = { 0, 0 };
+		}
 	}
 
 	if (Play::KeyDown(VK_SPACE))
@@ -105,11 +122,11 @@ void UpdateTools()
 	{
 		GameObject& obj_tool = Play::GetGameObject(id);
 
-		if (Play::IsColliding(obj_tool, obj_agent8)) 
+		if (game_state.agentState != STATE_DEAD && Play::IsColliding(obj_tool, obj_agent8)) 
 		{
 			Play::StopAudioLoop("music");
 			Play::PlayAudio("die");
-			obj_agent8.pos = {-100, -100};
+			game_state.agentState = STATE_DEAD;
 		}
 		Play::UpdateGameObject(obj_tool);
 
@@ -223,6 +240,55 @@ void UpdateDestroyed()
 		if (!Play::IsVisible(obj_dead) || obj_dead.frame >= 10) Play::DestroyGameObject(id_dead);
 	}
 };
+void UpdateAgent8()
+{
+	GameObject& obj_agent8 = Play::GetGameObjectByType(TYPE_AGENT8);
+
+	switch (game_state.agentState)
+	{
+	case STATE_APPEAR:
+		obj_agent8.velocity = { 0, 12 };
+		obj_agent8.acceleration = { 0, 0.5f };
+		Play::SetSprite(obj_agent8, "agent8_fall", 0);
+		obj_agent8.rotation = 0;
+		if (obj_agent8.pos.y >= DISPLAY_HEIGHT / 3) game_state.agentState = STATE_PLAY;
+		break;
+
+	case STATE_HALT:
+		obj_agent8.velocity *= 0.9f;
+		if (Play::IsAnimationComplete(obj_agent8)) game_state.agentState = STATE_PLAY;
+		break;
+
+	case STATE_PLAY:
+		HandlePlayercontrols();
+		break;
+
+	case STATE_DEAD:
+		obj_agent8.acceleration = { -0.3f, 0.5f };
+		obj_agent8.rotation += 0.25f;
+		if (Play::KeyPressed(VK_SPACE) == true)
+		{
+			game_state.agentState = STATE_APPEAR;
+			obj_agent8.pos = { 115, 0 };
+			obj_agent8.velocity = { 0, 0 };
+			obj_agent8.frame = 0;
+			Play::StartAudioLoop("music");
+			game_state.score = 0;
+
+			for (int id_obj : Play::CollectGameObjectIDsByType(TYPE_TOOL))
+				Play::GetGameObject(id_obj).type = TYPE_DESTROYED;
+		}
+		break;
+
+	}
+
+	Play::UpdateGameObject(obj_agent8);
+	if (Play::IsLeavingDisplayArea(obj_agent8) && game_state.agentState != STATE_DEAD)
+		obj_agent8.pos = obj_agent8.oldPos;
+
+	Play::DrawLine({obj_agent8.pos.x, 0}, obj_agent8.pos, Play::cWhite);
+	Play::DrawObjectRotated(obj_agent8);
+};
 
 
 
@@ -244,12 +310,16 @@ void MainGameEntry( PLAY_IGNORE_COMMAND_LINE )
 bool MainGameUpdate( float elapsedTime )
 {
 	Play::DrawBackground();
-	HandlePlayercontrols();
+	UpdateAgent8();
 	UpdateFan();
 	UpdateTools();
 	UpdateCoinsAndStars();
 	UpdateLaser();
 	UpdateDestroyed();
+
+	// Print state
+	Play::DrawFontText("64px", "ARROW KEYS TO MOVE UP AND DOWN AND SPACE TO FIRE", { DISPLAY_WIDTH / 2, DISPLAY_HEIGHT - 30}, Play::CENTRE);
+	Play::DrawFontText("132px", "SCORE: " + std::to_string(game_state.score), {DISPLAY_WIDTH / 2, 50}, Play::CENTRE);
 	// Quit application
 	Play::PresentDrawingBuffer();
 	return Play::KeyDown( VK_ESCAPE );
